@@ -10,6 +10,7 @@ type Agent struct {
 
 type MicrobrewAgent interface {
 	Init(uri, exchange, exchangeType string) error
+  Signal(event string, data interface{}) error
 }
 
 type Payload struct {
