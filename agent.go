@@ -8,33 +8,33 @@ type Agent struct {
 	producer *Producer
 }
 
+type MicrobrewAgent interface {
+	Init(uri, exchange, exchangeType string) error
+}
+
 type Payload struct {
   Event string      `json:"event"`
   Data interface{}  `json:"data"`
 }
 
-func NewAgent(uri, exchange, exchangeType string) (*Agent, error) {
-  var err error
-  a := &Agent{
-    producer: nil,
-  }
+func (a *Agent) Init(uri, exchange, exchangeType string) error {
+	producer := &Producer{}
+  err := producer.Init(uri, exchange, exchangeType)
+	if err != nil {
+		return err
+	}
 
-  a.producer, err = NewProducer(uri, exchange, exchangeType)
-  if err != nil {
-    return nil, err
-  }
+	a.producer = producer
 
-  return a, nil
+  return nil
 }
 
-func (a Agent) Signal(event string, data interface{}) error {
+func (a *Agent) Signal(event string, data interface{}) error {
   payload := &Payload{
     Event: event,
     Data: data,
   }
   marshalled, _ := json.Marshal(payload)
 
-  err := Publish(*a.producer, "", marshalled)
-
-  return err
+  return a.producer.Publish("", marshalled)
 }

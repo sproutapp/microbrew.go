@@ -11,12 +11,17 @@ type Producer struct {
   exchange   string
 }
 
-func Publish(p Producer, routingKey string, payload []byte) error {
+type MicrobrewProducer interface {
+  Init(uri, exchange, exchangeType string) error
+  Publish(routingKey string, payload []byte) error
+}
+
+func (p *Producer) Publish(routingKey string, payload []byte) error {
   err := p.Channel.Publish(
     p.exchange,     // exchange
-    routingKey,   // routing key
-    false,        // mandatory
-    false,        // immediate
+    routingKey,     // routing key
+    false,          // mandatory
+    false,          // immediate
     amqp.Publishing{
       Headers:         amqp.Table{},
         ContentType:     "text/plain",
@@ -34,13 +39,7 @@ func Publish(p Producer, routingKey string, payload []byte) error {
   return err
 }
 
-func NewProducer(uri, exchange, exchangeType string) (*Producer, error) {
-  p := &Producer{
-    Conn:    nil,
-    Channel: nil,
-    exchange: exchange,
-  }
-
+func (p *Producer) Init(uri, exchange, exchangeType string) error {
   var err error
 
   p.Conn, err = amqp.Dial("amqp://guest:guest@localhost:5672/")
@@ -60,5 +59,5 @@ func NewProducer(uri, exchange, exchangeType string) (*Producer, error) {
 	)
   FailOnError(err, "Failed to setup an exchange")
 
-  return p, nil
+  return err
 }
