@@ -3,7 +3,9 @@ package microbrew
 import (
   "log"
   "github.com/streadway/amqp"
+  "encoding/json"
 )
+
 
 type Producer struct {
 	Conn       *amqp.Connection
@@ -12,11 +14,17 @@ type Producer struct {
 }
 
 type MicrobrewProducer interface {
-  Init(uri, exchange, exchangeType string) error
-  Publish(routingKey string, payload []byte) error
+  Publish(routingKey string, payload *Payload) error
 }
 
-func (p *Producer) Publish(routingKey string, payload []byte) error {
+type Payload struct {
+  Event string      `json:"event"`
+  Data interface{}  `json:"data"`
+}
+
+func (p *Producer) Publish(routingKey string, payload *Payload) error {
+  marshalled, _ := json.Marshal(payload)
+
   err := p.Channel.Publish(
     p.exchange,     // exchange
     routingKey,     // routing key
@@ -26,7 +34,7 @@ func (p *Producer) Publish(routingKey string, payload []byte) error {
       Headers:         amqp.Table{},
         ContentType:     "text/plain",
         ContentEncoding: "",
-        Body:            payload,
+        Body:            marshalled,
         DeliveryMode:    amqp.Transient, // 1=non-persistent, 2=persistent
         Priority:        0,              // 0-9
     },
@@ -39,16 +47,18 @@ func (p *Producer) Publish(routingKey string, payload []byte) error {
   return err
 }
 
-func (p *Producer) Init(uri, exchange, exchangeType string) error {
+func NewProducer(uri, exchange, exchangeType string) *Producer {
   var err error
+  var conn *amqp.Connection
+  var channel *amqp.Channel
 
-  p.Conn, err = amqp.Dial("amqp://guest:guest@localhost:5672/")
+  conn, err = amqp.Dial("amqp://guest:guest@localhost:5672/")
   FailOnError(err, "Failed to connect to RabbitMQ")
 
-  p.Channel, err = p.Conn.Channel()
+  channel, err = conn.Channel()
 	FailOnError(err, "Failed to open a Channel")
 
-  err = p.Channel.ExchangeDeclare(
+  err = channel.ExchangeDeclare(
 		exchange,     // name of the exchange
 		exchangeType, // type
 		true,         // durable
@@ -59,5 +69,5 @@ func (p *Producer) Init(uri, exchange, exchangeType string) error {
 	)
   FailOnError(err, "Failed to setup an exchange")
 
-  return err
+  return &Producer { conn, channel, exchange }
 }

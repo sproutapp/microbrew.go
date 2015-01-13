@@ -1,33 +1,20 @@
 package microbrew
 
-import (
-  "encoding/json"
-)
-
-type Agent struct {
-	producer *Producer
-}
-
 type MicrobrewAgent interface {
-	Init(uri, exchange, exchangeType string) error
   Signal(event string, data interface{}) error
 }
 
-type Payload struct {
-  Event string      `json:"event"`
-  Data interface{}  `json:"data"`
+type Agent struct {
+  producer MicrobrewProducer
 }
 
-func (a *Agent) Init(uri, exchange, exchangeType string) error {
-	producer := &Producer{}
-  err := producer.Init(uri, exchange, exchangeType)
-	if err != nil {
-		return err
-	}
+func NewAgentForProducer(producer MicrobrewProducer) *Agent {
+  return &Agent { producer }
+}
 
-	a.producer = producer
-
-  return nil
+func NewAgent(uri, exchange, exchangeType string) *Agent {
+  producer := NewProducer(uri, exchange, exchangeType)
+  return NewAgentForProducer(producer)
 }
 
 func (a *Agent) Signal(event string, data interface{}) error {
@@ -35,7 +22,6 @@ func (a *Agent) Signal(event string, data interface{}) error {
     Event: event,
     Data: data,
   }
-  marshalled, _ := json.Marshal(payload)
 
-  return a.producer.Publish("", marshalled)
+  return a.producer.Publish("", payload)
 }
