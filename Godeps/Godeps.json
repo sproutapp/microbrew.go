@@ -1,0 +1,22 @@
+{
+	"ImportPath": "github.com/sproutapp/microbrew.go",
+	"GoVersion": "go1.2.1",
+	"Deps": [
+		{
+			"ImportPath": "github.com/streadway/amqp",
+			"Rev": "bc266e9eff752bd215add5d0a251ebd526828cf7"
+		},
+		{
+			"ImportPath": "github.com/stretchr/objx",
+			"Rev": "cbeaeb16a013161a98496fad62933b1d21786672"
+		},
+		{
+			"ImportPath": "github.com/stretchr/testify/assert",
+			"Rev": "2160c81a963bc827f650a9d420263d05d35bb97e"
+		},
+		{
+			"ImportPath": "github.com/stretchr/testify/mock",
+			"Rev": "2160c81a963bc827f650a9d420263d05d35bb97e"
+		}
+	]
+}
