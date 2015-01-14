@@ -3,7 +3,9 @@ package microbrew
 import (
   "log"
   "github.com/streadway/amqp"
+  "encoding/json"
 )
+
 
 type Producer struct {
 	Conn       *amqp.Connection
@@ -11,17 +13,28 @@ type Producer struct {
   exchange   string
 }
 
-func Publish(p Producer, routingKey string, payload []byte) error {
+type MicrobrewProducer interface {
+  Publish(routingKey string, payload *Payload) error
+}
+
+type Payload struct {
+  Event string      `json:"event"`
+  Data interface{}  `json:"data"`
+}
+
+func (p *Producer) Publish(routingKey string, payload *Payload) error {
+  marshalled, _ := json.Marshal(payload)
+
   err := p.Channel.Publish(
     p.exchange,     // exchange
-    routingKey,   // routing key
-    false,        // mandatory
-    false,        // immediate
+    routingKey,     // routing key
+    false,          // mandatory
+    false,          // immediate
     amqp.Publishing{
       Headers:         amqp.Table{},
         ContentType:     "text/plain",
         ContentEncoding: "",
-        Body:            payload,
+        Body:            marshalled,
         DeliveryMode:    amqp.Transient, // 1=non-persistent, 2=persistent
         Priority:        0,              // 0-9
     },
@@ -34,22 +47,18 @@ func Publish(p Producer, routingKey string, payload []byte) error {
   return err
 }
 
-func NewProducer(uri, exchange, exchangeType string) (*Producer, error) {
-  p := &Producer{
-    Conn:    nil,
-    Channel: nil,
-    exchange: exchange,
-  }
-
+func NewProducer(uri, exchange, exchangeType string) *Producer {
   var err error
+  var conn *amqp.Connection
+  var channel *amqp.Channel
 
-  p.Conn, err = amqp.Dial("amqp://guest:guest@localhost:5672/")
+  conn, err = amqp.Dial("amqp://guest:guest@localhost:5672/")
   FailOnError(err, "Failed to connect to RabbitMQ")
 
-  p.Channel, err = p.Conn.Channel()
+  channel, err = conn.Channel()
 	FailOnError(err, "Failed to open a Channel")
 
-  err = p.Channel.ExchangeDeclare(
+  err = channel.ExchangeDeclare(
 		exchange,     // name of the exchange
 		exchangeType, // type
 		true,         // durable
@@ -60,5 +69,5 @@ func NewProducer(uri, exchange, exchangeType string) (*Producer, error) {
 	)
   FailOnError(err, "Failed to setup an exchange")
 
-  return p, nil
+  return &Producer { conn, channel, exchange }
 }
