@@ -4,6 +4,7 @@ import (
   "log"
   "github.com/streadway/amqp"
   "encoding/json"
+  "github.com/nu7hatch/gouuid"
 )
 
 
@@ -11,6 +12,7 @@ type Producer struct {
 	Conn       *amqp.Connection
 	Channel    *amqp.Channel
   exchange   string
+  Cid        *UUID
 }
 
 type MicrobrewProducer interface {
@@ -20,9 +22,17 @@ type MicrobrewProducer interface {
 type Payload struct {
   Event string      `json:"event"`
   Data interface{}  `json:"data"`
+  Cid *UUID         `json:"cid"`
 }
 
 func (p *Producer) Publish(routingKey string, payload *Payload) error {
+  if payload.cid == nil {
+    uuid, err := UUID.NewV4()
+    if err != nil {
+      payload.cid = uuid
+    }
+  }
+
   marshalled, _ := json.Marshal(payload)
 
   err := p.Channel.Publish(
@@ -31,7 +41,7 @@ func (p *Producer) Publish(routingKey string, payload *Payload) error {
     false,          // mandatory
     false,          // immediate
     amqp.Publishing{
-      Headers:         amqp.Table{},
+      Headers:           amqp.Table{},
         ContentType:     "text/plain",
         ContentEncoding: "",
         Body:            marshalled,
